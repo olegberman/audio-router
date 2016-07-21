@@ -10,8 +10,15 @@ router
   })
 })
 
-.on('change title to :text', (text) => {
+.on('change @', (text) => {
   document.title = text;
+  router.ask('you just changed the title to ' + text + '. Are you happy now?', () => {
+    router.speak('I thought so', () => {
+      router.ask('I am going to bug you. Give me a number', (num) => {
+        router.speak('The double of that is ' + (Number(num) * 2))
+      })
+    })
+  })
 })
 
 .on('yo', () => {
