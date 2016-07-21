@@ -37,20 +37,44 @@ var extract_params = function(sbj_arr, tpl_arr, ok_char) {
   var out = [];
   if(sbj_arr.length !== tpl_arr.length) return
   for(var i = 0; i < sbj_arr.length; i++) {
-  	if(sbj_arr[i] !== tpl_arr[i]) {
-    	if(sbj_arr[i] !== ok_char) {
-      	out.push(sbj_arr[i])
+  	if(tpl_arr[i] === ok_char) {
+      out.push(sbj_arr[i]);
+    } else {
+      var good = word_match_with_typos(sbj_arr[i], tpl_arr[i], 1)
+      if(!good) {
+        return false;
       }
     }
   }
   return out;
 }
 
+var word_match_with_typos = function(word_subj, word_tpl, typos) {
+  console.log(word_subj, word_tpl)
+  var letters_subj = word_subj.split('')
+  var letters_tpl = word_tpl.split('')
+  if(word_subj.length <= typos) {
+    if(word_subj === word_tpl) {
+      return true
+    } else {
+      return false
+    }
+  }
+  var typo_counter = 0
+  for(var i = 0; i < letters_tpl.length; i++) {
+    if(letters_subj[i] !== letters_tpl[i]) {
+      typo_counter++
+    }
+  }
+  console.log(typo_counter, typos)
+  return typo_counter <= typos
+}
 
-var parseRoutesWithParams = function(input) {
+
+var extract_params_and_template_name = function(input) {
   // break down input into words
   var words = input.split(' ')
-  if(words.length < 2) return
+  if(words.length < 2) return []
   // now try to match with message patterns
   // find all registered messages with dynamic input @
   var templates = []
@@ -61,25 +85,27 @@ var parseRoutesWithParams = function(input) {
   }
   if(!templates.length) return
   var out = []
+  var name
   templates.forEach(function(template) {
     var tplwords = template.toLowerCase().split(' ')
     if(tplwords.length !== words.length) return
     out = extract_params(words, tplwords, '@')
+    if(out) name = template
   })
-  return out
+  return [name, out]
 }
 
 router.process = function() {
-  var params = parseRoutesWithParams(router.currentInput)
+  var data = extract_params_and_template_name(router.currentInput)
   var trimmed = router.currentInput.trim();
-  if(params) {
+  if(data[0] && data[1]) {
     // replace evething back to @ to find match in commands
-    params.forEach(function(param) {
+    data[1].forEach(function(param) {
       trimmed = trimmed.replace(param, '@')
     })
   }
-  if(router.commands[trimmed]) {
-    router.commands[trimmed].apply(this, params);
+  if(router.commands[data[0] || trimmed]) {
+    router.commands[data[0] || trimmed].apply(this, data[1] || []);
   } else {
     router.commandNotFound();
   }

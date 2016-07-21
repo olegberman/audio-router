@@ -18,6 +18,6 @@ router
 .message('ha', () => {
   router.speak('fuck off you are annoying me .');
 })
-.message('fuck @', (str1) => {
-  console.log('fuck who?' + str1)
+.message('hello @ fuck @', (str1, str2) => {
+  router.speak('hello '+str1+' fuck '+str2);
 })
