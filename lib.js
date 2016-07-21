@@ -1,5 +1,23 @@
 var terminate_code = 13;
 
+function debounce(func, wait, immediate) {
+	var timeout;
+	return function() {
+		var context = this, args = arguments;
+		var later = function() {
+			timeout = null;
+			if (!immediate) func.apply(context, args);
+		};
+		var callNow = immediate && !timeout;
+		clearTimeout(timeout);
+		timeout = setTimeout(later, wait);
+		if (callNow) func.apply(context, args);
+	};
+};
+
+var debouncedSpeak = debounce(function() {
+  router.speak(router.currentInput)
+}, 500);
 
 var router = {};
 
@@ -10,12 +28,29 @@ router.next = undefined;
 
 router.init = function() {
   window.addEventListener('keyup', function(e) {
+    debouncedSpeak()
+    console.log(e)
     if(e.keyCode === terminate_code) {
       router.process();
+    } else if(e.keyCode === 8) {
+      var inputArr = router.currentInput.split(' ');
+      if(inputArr < 2) {
+        return false;
+      } else {
+        inputArr.pop();
+        router.currentInput = inputArr.join(' ')
+      }
     } else {
       if(e.key.length !== 1) return;
       router.currentInput += e.key;
     }
+    e.preventDefault()
+    return false;
+  }, false)
+
+  window.addEventListener('keydown', function(e) {
+    e.preventDefault()
+    return false;
   })
 };
 
@@ -25,7 +60,12 @@ router.on = function(command, runner) {
 }
 
 router.ask = function(question, answered) {
-  router.next = answered
+  if(typeof arguments[1] === 'function') {
+      router.next = answered
+  }
+  if(typeof arguments[1] === 'boolean') {
+    router.multiWordInput = true;
+  }
   router.speak(question)
 }
 
@@ -78,7 +118,11 @@ var extract_params_and_template_name = function(input) {
     if(key.indexOf('@') !== -1) {
       templates.push(key)
     }
+    if(key === '@') {
+      templates.push(key)
+    }
   }
+  console.log(templates)
   if(!templates.length) return []
   var out = []
   var name
@@ -113,6 +157,11 @@ router.process = function() {
   if(router.commands[data[0] || trimmed]) {
     router.commands[data[0] || trimmed].apply(this, data[1] || []);
   } else {
+    if(router.commands['@']) {
+      router.commands['@'].apply(this, [router.currentInput]);
+      router.currentInput = '';
+      return;
+    }
     router.commandNotFound();
   }
   router.currentInput = '';
